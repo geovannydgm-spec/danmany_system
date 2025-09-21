@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "155165877581",
+    "project_id": "asistenciaescolar-673cd",
+    "storage_bucket": "asistenciaescolar-673cd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:155165877581:android:1450a184544ccd6a484304",
+        "android_client_info": {
+          "package_name": "com.example.asistencia_escolar_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWyYTwEJ043Nj6_YDgRxhcYu16f7JGPag"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
