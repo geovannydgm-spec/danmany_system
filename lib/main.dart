@@ -5,25 +5,18 @@ import 'package:asistencia_escolar_app/screens/user_screen.dart';
 import 'package:asistencia_escolar_app/screens/admin_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-
-// 👇 Importación del archivo reports_screen.dart para que esté disponible en el proyecto
 import 'package:asistencia_escolar_app/screens/reports_screen.dart';
-
-// Asegúrate de que este archivo esté generado y la importación no esté comentada
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   try {
-    // Esta línea es crucial para que Firebase funcione.
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
   } catch (e) {
     debugPrint("Error initializing Firebase: $e");
   }
-
   runApp(const MyApp());
 }
 
@@ -40,15 +33,13 @@ class MyApp extends StatelessWidget {
       ),
       home: const AuthWrapper(),
       debugShowCheckedModeBanner: false,
-
-      // 👇 Aquí agregamos soporte de localización
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [
-         Locale('es', 'ES'), // Español
+        Locale('es', 'ES'),
       ],
     );
   }
@@ -63,9 +54,10 @@ class AuthWrapper extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
-
         if (snapshot.hasData) {
           final User user = snapshot.data!;
           if (user.email == 'geovanny.dgm@gmail.com') {
@@ -74,8 +66,6 @@ class AuthWrapper extends StatelessWidget {
             return const UserScreen(role: 'maestro');
           }
         }
-
-        // Aquí se retorna la pantalla de inicio de sesión
         return const MyHomePage();
       },
     );
@@ -98,33 +88,19 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-
       try {
         await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: _emailController.text,
           password: _passwordController.text,
         );
-        // La navegación se maneja automáticamente por el AuthWrapper
       } on FirebaseAuthException catch (e) {
         String errorMessage = 'Error de autenticación';
-        if (e.code == 'user-not-found') {
-          errorMessage = 'Usuario no encontrado.';
-        } else if (e.code == 'wrong-password') {
-          errorMessage = 'Contraseña incorrecta.';
-        } else if (e.code == 'invalid-email') {
-          errorMessage = 'Correo electrónico inválido.';
-        }
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMessage)),
-          );
-        }
+        if (e.code == 'user-not-found') errorMessage = 'Usuario no encontrado.';
+        else if (e.code == 'wrong-password') errorMessage = 'Contraseña incorrecta.';
+        else if (e.code == 'invalid-email') errorMessage = 'Correo electrónico inválido.';
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage)));
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error inesperado: $e')),
-          );
-        }
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error inesperado: $e')));
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
@@ -142,20 +118,31 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 600) {
+        final isMobile = constraints.maxWidth < 600;
+
+        final loginCard = Card(
+          elevation: 8,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: _buildLoginForm(),
+          ),
+        );
+
+        if (isMobile) {
           return Scaffold(
-            body: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
-                child: Card(
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(32.0),
-                    child: _buildLoginForm(),
-                  ),
+            body: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.deepPurple, Color(0xFF1EE9D5)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: loginCard,
                 ),
               ),
             ),
@@ -171,16 +158,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       child: SingleChildScrollView(
                         child: Padding(
                           padding: const EdgeInsets.all(24.0),
-                          child: Card(
-                            elevation: 8,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(32.0),
-                              child: _buildLoginForm(),
-                            ),
-                          ),
+                          child: loginCard,
                         ),
                       ),
                     ),
@@ -199,13 +177,8 @@ class _MyHomePageState extends State<MyHomePage> {
                       child: Image.asset(
                         'assets/images/Alumno.png',
                         fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Icons.school,
-                            size: 100,
-                            color: Colors.white,
-                          );
-                        },
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.school, size: 100, color: Colors.white),
                       ),
                     ),
                   ),
@@ -224,27 +197,51 @@ class _MyHomePageState extends State<MyHomePage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // ---- Logo Danmany_sistem ----
+          Container(
+            width: 110,
+            height: 110,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.deepPurple.withOpacity(0.25),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/icons/icon.png',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  color: Colors.deepPurple.shade50,
+                  child: const Icon(Icons.school, size: 60, color: Colors.deepPurple),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // ---- Título ----
           const Text(
             'Inicio de Sesión',
             style: TextStyle(
-              fontSize: 28,
+              fontSize: 26,
               fontWeight: FontWeight.bold,
               color: Colors.deepPurple,
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 28),
           TextFormField(
             controller: _emailController,
             decoration: InputDecoration(
               labelText: 'Correo Electrónico',
               prefixIcon: const Icon(Icons.email),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            validator: (value) => value == null || value.isEmpty
-                ? 'Ingrese su correo electrónico'
-                : null,
+            validator: (value) =>
+                value == null || value.isEmpty ? 'Ingrese su correo electrónico' : null,
             keyboardType: TextInputType.emailAddress,
           ),
           const SizedBox(height: 16),
@@ -254,13 +251,10 @@ class _MyHomePageState extends State<MyHomePage> {
             decoration: InputDecoration(
               labelText: 'Contraseña',
               prefixIcon: const Icon(Icons.lock),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            validator: (value) => (value?.length ?? 0) < 6
-                ? 'La contraseña debe tener al menos 6 caracteres'
-                : null,
+            validator: (value) =>
+                (value?.length ?? 0) < 6 ? 'La contraseña debe tener al menos 6 caracteres' : null,
           ),
           const SizedBox(height: 32),
           ElevatedButton(
@@ -269,9 +263,7 @@ class _MyHomePageState extends State<MyHomePage> {
               backgroundColor: Colors.deepPurple,
               foregroundColor: Colors.white,
               minimumSize: const Size(double.infinity, 50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               disabledBackgroundColor: Colors.deepPurple.withOpacity(0.5),
             ),
             child: _isLoading
