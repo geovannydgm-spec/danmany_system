@@ -27,11 +27,16 @@ class _UserScreenState extends State<UserScreen> {
   late MobileScannerController _scannerController;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   CameraFacing _currentCamera = CameraFacing.back;
+  int _scannerKey = 0; // Key única para forzar reconstrucción del scanner
 
   @override
   void initState() {
     super.initState();
-    _initScanner(CameraFacing.back);
+    _scannerController = MobileScannerController(
+      detectionSpeed: DetectionSpeed.normal,
+      facing: CameraFacing.back,
+      torchEnabled: false,
+    );
 
     initializeDateFormatting('es', null).then((_) {
       Intl.defaultLocale = 'es';
@@ -42,6 +47,26 @@ class _UserScreenState extends State<UserScreen> {
     });
   }
 
+  /// Alterna entre cámara frontal y trasera recreando todo el controlador.
+  void _switchCamera() {
+    final newFacing = _currentCamera == CameraFacing.back
+        ? CameraFacing.front
+        : CameraFacing.back;
+
+    // Liberar controlador anterior
+    _scannerController.dispose();
+
+    setState(() {
+      _currentCamera = newFacing;
+      _scannerKey++; // Cambia la key para forzar reconstrucción del widget
+      _scannerController = MobileScannerController(
+        detectionSpeed: DetectionSpeed.normal,
+        facing: newFacing,
+        torchEnabled: false,
+      );
+    });
+  }
+
   /// Inicializa o reinicia el controlador del escáner con la cámara indicada.
   void _initScanner(CameraFacing facing) {
     _scannerController = MobileScannerController(
@@ -49,22 +74,6 @@ class _UserScreenState extends State<UserScreen> {
       facing: facing,
       torchEnabled: false,
     );
-  }
-
-  /// Alterna entre cámara frontal y trasera recreando el controlador.
-  Future<void> _switchCamera() async {
-    final newFacing = _currentCamera == CameraFacing.back
-        ? CameraFacing.front
-        : CameraFacing.back;
-
-    // Detener y liberar el controlador actual
-    await _scannerController.stop();
-    _scannerController.dispose();
-
-    setState(() {
-      _currentCamera = newFacing;
-      _initScanner(newFacing);
-    });
   }
 
   void _updateTime() {
@@ -532,6 +541,7 @@ class _UserScreenState extends State<UserScreen> {
         children: [
           Positioned.fill(
             child: MobileScanner(
+              key: ValueKey(_scannerKey),
               controller: _scannerController,
               onDetect: _handleQrScan,
             ),
