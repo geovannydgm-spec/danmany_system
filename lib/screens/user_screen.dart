@@ -31,11 +31,7 @@ class _UserScreenState extends State<UserScreen> {
   @override
   void initState() {
     super.initState();
-    _scannerController = MobileScannerController(
-      detectionSpeed: DetectionSpeed.normal,
-      facing: CameraFacing.back,
-      torchEnabled: false,
-    );
+    _initScanner(CameraFacing.back);
 
     initializeDateFormatting('es', null).then((_) {
       Intl.defaultLocale = 'es';
@@ -46,14 +42,29 @@ class _UserScreenState extends State<UserScreen> {
     });
   }
 
-  /// Alterna entre cámara frontal y trasera.
-  void _switchCamera() {
+  /// Inicializa o reinicia el controlador del escáner con la cámara indicada.
+  void _initScanner(CameraFacing facing) {
+    _scannerController = MobileScannerController(
+      detectionSpeed: DetectionSpeed.normal,
+      facing: facing,
+      torchEnabled: false,
+    );
+  }
+
+  /// Alterna entre cámara frontal y trasera recreando el controlador.
+  Future<void> _switchCamera() async {
+    final newFacing = _currentCamera == CameraFacing.back
+        ? CameraFacing.front
+        : CameraFacing.back;
+
+    // Detener y liberar el controlador actual
+    await _scannerController.stop();
+    _scannerController.dispose();
+
     setState(() {
-      _currentCamera = _currentCamera == CameraFacing.back
-          ? CameraFacing.front
-          : CameraFacing.back;
+      _currentCamera = newFacing;
+      _initScanner(newFacing);
     });
-    _scannerController.switchCamera();
   }
 
   void _updateTime() {
@@ -420,22 +431,76 @@ class _UserScreenState extends State<UserScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Asistencia Escolar'),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         centerTitle: false,
+        // Logo en el título
+        title: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: const BoxDecoration(shape: BoxShape.circle),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/icons/icon.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.school, color: Colors.white, size: 28),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text('Asistencia Escolar',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
         // Botón de cambio de cámara centrado en el AppBar
         flexibleSpace: SafeArea(
           child: Center(
             child: GestureDetector(
               onTap: _switchCamera,
-              child: Container(
-                padding: const EdgeInsets.all(8),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  color: _currentCamera == CameraFacing.front
+                      ? Colors.white.withOpacity(0.35)
+                      : Colors.white.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _currentCamera == CameraFacing.front
+                        ? Colors.white
+                        : Colors.white.withOpacity(0.4),
+                    width: _currentCamera == CameraFacing.front ? 2 : 1,
+                  ),
                 ),
-                child: const Icon(Icons.cameraswitch_rounded, color: Colors.white, size: 28),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _currentCamera == CameraFacing.front
+                          ? Icons.camera_front
+                          : Icons.camera_rear,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _currentCamera == CameraFacing.front
+                          ? 'FRONTAL'
+                          : 'TRASERA',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: _currentCamera == CameraFacing.front
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
