@@ -7,28 +7,28 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'reports_screen.dart';
-
+ 
 class UserScreen extends StatefulWidget {
   final String role;
-
+ 
   const UserScreen({super.key, required this.role});
-
+ 
   @override
   State<UserScreen> createState() => _UserScreenState();
 }
-
+ 
 class _UserScreenState extends State<UserScreen> {
   late Timer _timer;
   late DateTime _currentTime;
   String _formattedTime = '';
   String _formattedDate = '';
   String _selectedDay = '';
-
+ 
   late MobileScannerController _scannerController;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   CameraFacing _currentCamera = CameraFacing.back;
   int _scannerKey = 0; // Key única para forzar reconstrucción del scanner
-
+ 
   @override
   void initState() {
     super.initState();
@@ -37,7 +37,7 @@ class _UserScreenState extends State<UserScreen> {
       facing: CameraFacing.back,
       torchEnabled: false,
     );
-
+ 
     initializeDateFormatting('es', null).then((_) {
       Intl.defaultLocale = 'es';
       _updateTime();
@@ -46,16 +46,16 @@ class _UserScreenState extends State<UserScreen> {
       });
     });
   }
-
+ 
   /// Alterna entre cámara frontal y trasera recreando todo el controlador.
   void _switchCamera() {
     final newFacing = _currentCamera == CameraFacing.back
         ? CameraFacing.front
         : CameraFacing.back;
-
+ 
     // Liberar controlador anterior
     _scannerController.dispose();
-
+ 
     setState(() {
       _currentCamera = newFacing;
       _scannerKey++; // Cambia la key para forzar reconstrucción del widget
@@ -66,7 +66,7 @@ class _UserScreenState extends State<UserScreen> {
       );
     });
   }
-
+ 
   /// Inicializa o reinicia el controlador del escáner con la cámara indicada.
   void _initScanner(CameraFacing facing) {
     _scannerController = MobileScannerController(
@@ -75,7 +75,7 @@ class _UserScreenState extends State<UserScreen> {
       torchEnabled: false,
     );
   }
-
+ 
   void _updateTime() {
     final now = DateTime.now();
     _currentTime = now;
@@ -85,7 +85,7 @@ class _UserScreenState extends State<UserScreen> {
       _selectedDay = DateFormat('EEEE', 'es').format(_currentTime).toUpperCase();
     });
   }
-
+ 
   Future<void> _saveAttendance(String studentId, Map<String, dynamic> studentData) async {
     try {
       await _firestore.collection('asistencia').doc(studentId).collection('registros').add({
@@ -111,7 +111,7 @@ class _UserScreenState extends State<UserScreen> {
       }
     }
   }
-
+ 
   Future<Map<String, dynamic>?> _fetchStudentDataFromFirestore(String studentId) async {
     try {
       DocumentSnapshot doc = await _firestore.collection('students').doc(studentId).get();
@@ -121,78 +121,35 @@ class _UserScreenState extends State<UserScreen> {
       return null;
     }
   }
-
+ 
   void _showStudentDataDialog(Map<String, dynamic> studentData) {
     String rawPhotoData = studentData['photo']?.toString() ?? '';
     String imageUrl = '';
     final urlRegex = RegExp(r'https?:\/\/[^\s]+');
     final match = urlRegex.firstMatch(rawPhotoData);
     if (match != null) imageUrl = match.group(0) ?? '';
-
+ 
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Asistencia Registrada'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (imageUrl.isNotEmpty)
-                  Container(
-                    width: double.infinity,
-                    height: 150,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey[200]),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: CachedNetworkImage(
-                        imageUrl: imageUrl,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(color: Colors.grey[300], child: const Center(child: CircularProgressIndicator())),
-                        errorWidget: (context, url, error) => Container(
-                          color: Colors.grey[300],
-                          child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            Icon(Icons.error, color: Colors.red),
-                            SizedBox(height: 4),
-                            Text('Error de imagen', style: TextStyle(fontSize: 12)),
-                          ]),
-                        ),
-                      ),
-                    ),
-                  ),
-                Text('Escuela: ${studentData['escuela']}', style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 8),
-                Text('Nombre(s): ${studentData['nombres']}', style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 8),
-                Text('Apellido Paterno: ${studentData['apellido_paterno']}', style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 8),
-                Text('Apellido Materno: ${studentData['apellido_materno']}', style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 8),
-                Text('Turno: ${studentData['turno']}', style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 8),
-                Text('Grado: ${studentData['grado']}', style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 8),
-                Text('Grupo: ${studentData['grupo']}', style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 8),
-                Text('Ciclo Escolar: ${studentData['ciclo']}', style: const TextStyle(fontSize: 16)),
-              ],
-            ),
-          ),
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return _StudentDialog(
+          studentData: studentData,
+          imageUrl: imageUrl,
+          segundosTotales: 8,
+          onCerrar: () {
+            if (Navigator.of(dialogContext).canPop()) {
+              Navigator.of(dialogContext).pop();
+            }
+            if (mounted) _scannerController.start();
+          },
         );
       },
-    );
-
-    Future.delayed(const Duration(seconds: 7), () {
-      if (mounted) {
-        Navigator.of(context).pop();
-        _scannerController.start();
-      }
+    ).then((_) {
+      if (mounted) _scannerController.start();
     });
   }
-
+ 
   void _handleQrScan(BarcodeCapture capture) async {
     _scannerController.stop();
     final List<Barcode> barcodes = capture.barcodes;
@@ -211,7 +168,7 @@ class _UserScreenState extends State<UserScreen> {
       }
     }
   }
-
+ 
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -224,15 +181,15 @@ class _UserScreenState extends State<UserScreen> {
       }
     });
   }
-
+ 
   void _logout() async {
     await FirebaseAuth.instance.signOut();
   }
-
+ 
   // ------------------------------------------------
   // Login de Reportes
   // ------------------------------------------------
-
+ 
   /// Muestra el diálogo de login para acceder a Reportes.
   /// Verifica credenciales en Firebase Auth y luego carga los permisos de Firestore.
   Future<void> _showReportesLogin() async {
@@ -240,7 +197,7 @@ class _UserScreenState extends State<UserScreen> {
     final passCtrl = TextEditingController();
     bool isLoading = false;
     String errorMsg = '';
-
+ 
     await showDialog(
       context: context,
       barrierDismissible: true,
@@ -342,27 +299,27 @@ class _UserScreenState extends State<UserScreen> {
                             isLoading = true;
                             errorMsg = '';
                           });
-
+ 
                           try {
                             // Guardar usuario actual (maestro escaneando)
                             final usuarioActual = FirebaseAuth.instance.currentUser;
                             final emailActual = usuarioActual?.email;
                             final passActual = passCtrl.text.trim(); // No tenemos la pass del maestro actual
-
+ 
                             // Intentar login con las credenciales ingresadas
                             UserCredential cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
                               email: emailCtrl.text.trim(),
                               password: passCtrl.text.trim(),
                             );
-
+ 
                             final uid = cred.user!.uid;
-
+ 
                             // Buscar permisos en Firestore
                             final permisosDoc = await FirebaseFirestore.instance
                                 .collection('usuarios_permisos')
                                 .doc(uid)
                                 .get();
-
+ 
                             if (!permisosDoc.exists) {
                               // No tiene permisos asignados
                               setDialogState(() {
@@ -378,9 +335,9 @@ class _UserScreenState extends State<UserScreen> {
                               }
                               return;
                             }
-
+ 
                             final permisos = permisosDoc.data() as Map<String, dynamic>;
-
+ 
                             // Cerrar diálogo y abrir reportes con permisos
                             if (mounted) {
                               Navigator.of(context).pop();
@@ -413,7 +370,7 @@ class _UserScreenState extends State<UserScreen> {
       },
     );
   }
-
+ 
   /// Abre la pantalla de reportes pasando los permisos del usuario.
   void _abrirReportesConPermisos(Map<String, dynamic> permisos) {
     _scannerController.stop();
@@ -426,18 +383,18 @@ class _UserScreenState extends State<UserScreen> {
       if (mounted) _scannerController.start();
     });
   }
-
+ 
   @override
   void dispose() {
     _timer.cancel();
     _scannerController.dispose();
     super.dispose();
   }
-
+ 
   @override
   Widget build(BuildContext context) {
     final List<String> weekdays = ['LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO', 'DOMINGO'];
-
+ 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
@@ -664,6 +621,160 @@ class _UserScreenState extends State<UserScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+ 
+// ------------------------------------------------
+// Widget separado para el diálogo de asistencia
+// con su propio Timer — evita que se reinicie
+// ------------------------------------------------
+class _StudentDialog extends StatefulWidget {
+  final Map<String, dynamic> studentData;
+  final String imageUrl;
+  final int segundosTotales;
+  final VoidCallback onCerrar;
+ 
+  const _StudentDialog({
+    required this.studentData,
+    required this.imageUrl,
+    required this.segundosTotales,
+    required this.onCerrar,
+  });
+ 
+  @override
+  State<_StudentDialog> createState() => _StudentDialogState();
+}
+ 
+class _StudentDialogState extends State<_StudentDialog> {
+  late int _segundosRestantes;
+  Timer? _timer;
+ 
+  @override
+  void initState() {
+    super.initState();
+    _segundosRestantes = widget.segundosTotales;
+    // Timer que corre UNA sola vez y no se reinicia
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) { t.cancel(); return; }
+      setState(() => _segundosRestantes--);
+      if (_segundosRestantes <= 0) {
+        t.cancel();
+        widget.onCerrar();
+      }
+    });
+  }
+ 
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+ 
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Colors.green, size: 24),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text('Asistencia Registrada',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ),
+          // Contador regresivo circular
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 38,
+                height: 38,
+                child: CircularProgressIndicator(
+                  value: _segundosRestantes / widget.segundosTotales,
+                  backgroundColor: Colors.grey.shade200,
+                  color: _segundosRestantes > 3 ? Colors.deepPurple : Colors.orange,
+                  strokeWidth: 3,
+                ),
+              ),
+              Text(
+                '$_segundosRestantes',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: _segundosRestantes > 3 ? Colors.deepPurple : Colors.orange,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (widget.imageUrl.isNotEmpty)
+              Container(
+                width: double.infinity,
+                height: 150,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.grey[200]),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: CachedNetworkImage(
+                    imageUrl: widget.imageUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                        color: Colors.grey[300],
+                        child: const Center(child: CircularProgressIndicator())),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[300],
+                      child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error, color: Colors.red),
+                            SizedBox(height: 4),
+                            Text('Error de imagen', style: TextStyle(fontSize: 12)),
+                          ]),
+                    ),
+                  ),
+                ),
+              ),
+            _infoRow('Escuela', widget.studentData['escuela']),
+            _infoRow('Nombre(s)', widget.studentData['nombres']),
+            _infoRow('Apellido Paterno', widget.studentData['apellido_paterno']),
+            _infoRow('Apellido Materno', widget.studentData['apellido_materno']),
+            _infoRow('Turno', widget.studentData['turno']),
+            _infoRow('Grado', widget.studentData['grado']),
+            _infoRow('Grupo', widget.studentData['grupo']),
+            _infoRow('Ciclo Escolar', widget.studentData['ciclo']),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton.icon(
+          onPressed: () {
+            _timer?.cancel();
+            widget.onCerrar();
+          },
+          icon: const Icon(Icons.qr_code_scanner, size: 18),
+          label: const Text('Siguiente'),
+          style: TextButton.styleFrom(foregroundColor: Colors.deepPurple),
+        ),
+      ],
+    );
+  }
+ 
+  Widget _infoRow(String label, dynamic valor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        '$label: ${valor ?? ''}',
+        style: const TextStyle(fontSize: 16),
       ),
     );
   }
