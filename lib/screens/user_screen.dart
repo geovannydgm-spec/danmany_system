@@ -185,7 +185,7 @@ class _UserScreenState extends State<UserScreen> {
       },
     );
 
-    Future.delayed(const Duration(seconds: 8), () {
+    Future.delayed(const Duration(seconds: 7), () {
       if (mounted) {
         Navigator.of(context).pop();
         _scannerController.start();
