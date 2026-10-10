@@ -131,12 +131,12 @@ class _UserScreenState extends State<UserScreen> {
 
     showDialog(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return _StudentDialog(
           studentData: studentData,
           imageUrl: imageUrl,
-          segundosTotales: 20,
+          segundosTotales: 5,
           onCerrar: () {
             if (Navigator.of(dialogContext).canPop()) {
               Navigator.of(dialogContext).pop();
@@ -650,13 +650,19 @@ class _StudentDialog extends StatefulWidget {
 class _StudentDialogState extends State<_StudentDialog> {
   late int _segundosRestantes;
   Timer? _timer;
+  bool _temporizadorIniciado = false;
 
   @override
   void initState() {
     super.initState();
     _segundosRestantes = widget.segundosTotales;
-    // Timer que corre UNA sola vez y no se reinicia
-    _timer = Timer.periodic(const Duration(seconds: 5), (t) {
+    if (widget.imageUrl.isEmpty) _iniciarTemporizador();
+  }
+
+  void _iniciarTemporizador() {
+    if (_temporizadorIniciado || !mounted) return;
+    _temporizadorIniciado = true;
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) { t.cancel(); return; }
       setState(() => _segundosRestantes--);
       if (_segundosRestantes <= 0) {
@@ -727,19 +733,29 @@ class _StudentDialogState extends State<_StudentDialog> {
                   borderRadius: BorderRadius.circular(8),
                   child: CachedNetworkImage(
                     imageUrl: widget.imageUrl,
+                      imageBuilder: (context, imageProvider) {
+                        _iniciarTemporizador();
+                        return Image(image: imageProvider, fit: BoxFit.cover);
+                      },
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Container(
                         color: Colors.grey[300],
                         child: const Center(child: CircularProgressIndicator())),
                     errorWidget: (context, url, error) => Container(
                       color: Colors.grey[300],
-                      child: const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.error, color: Colors.red),
-                            SizedBox(height: 4),
-                            Text('Error de imagen', style: TextStyle(fontSize: 12)),
-                          ]),
+                      child: Builder(
+                        builder: (context) {
+                          _iniciarTemporizador();
+                          return const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error, color: Colors.red),
+                              SizedBox(height: 4),
+                              Text('Error de imagen', style: TextStyle(fontSize: 12)),
+                            ],
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
