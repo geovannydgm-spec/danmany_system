@@ -7,28 +7,28 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'reports_screen.dart';
- 
+
 class UserScreen extends StatefulWidget {
   final String role;
- 
+
   const UserScreen({super.key, required this.role});
- 
+
   @override
   State<UserScreen> createState() => _UserScreenState();
 }
- 
+
 class _UserScreenState extends State<UserScreen> {
   late Timer _timer;
   late DateTime _currentTime;
   String _formattedTime = '';
   String _formattedDate = '';
   String _selectedDay = '';
- 
+
   late MobileScannerController _scannerController;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   CameraFacing _currentCamera = CameraFacing.back;
   int _scannerKey = 0; // Key única para forzar reconstrucción del scanner
- 
+
   @override
   void initState() {
     super.initState();
@@ -37,25 +37,25 @@ class _UserScreenState extends State<UserScreen> {
       facing: CameraFacing.back,
       torchEnabled: false,
     );
- 
+
     initializeDateFormatting('es', null).then((_) {
       Intl.defaultLocale = 'es';
       _updateTime();
-      _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         _updateTime();
       });
     });
   }
- 
+
   /// Alterna entre cámara frontal y trasera recreando todo el controlador.
   void _switchCamera() {
     final newFacing = _currentCamera == CameraFacing.back
         ? CameraFacing.front
         : CameraFacing.back;
- 
+
     // Liberar controlador anterior
     _scannerController.dispose();
- 
+
     setState(() {
       _currentCamera = newFacing;
       _scannerKey++; // Cambia la key para forzar reconstrucción del widget
@@ -66,7 +66,7 @@ class _UserScreenState extends State<UserScreen> {
       );
     });
   }
- 
+
   /// Inicializa o reinicia el controlador del escáner con la cámara indicada.
   void _initScanner(CameraFacing facing) {
     _scannerController = MobileScannerController(
@@ -75,7 +75,7 @@ class _UserScreenState extends State<UserScreen> {
       torchEnabled: false,
     );
   }
- 
+
   void _updateTime() {
     final now = DateTime.now();
     _currentTime = now;
@@ -85,7 +85,7 @@ class _UserScreenState extends State<UserScreen> {
       _selectedDay = DateFormat('EEEE', 'es').format(_currentTime).toUpperCase();
     });
   }
- 
+
   Future<void> _saveAttendance(String studentId, Map<String, dynamic> studentData) async {
     try {
       await _firestore.collection('asistencia').doc(studentId).collection('registros').add({
@@ -111,7 +111,7 @@ class _UserScreenState extends State<UserScreen> {
       }
     }
   }
- 
+
   Future<Map<String, dynamic>?> _fetchStudentDataFromFirestore(String studentId) async {
     try {
       DocumentSnapshot doc = await _firestore.collection('students').doc(studentId).get();
@@ -121,14 +121,14 @@ class _UserScreenState extends State<UserScreen> {
       return null;
     }
   }
- 
+
   void _showStudentDataDialog(Map<String, dynamic> studentData) {
     String rawPhotoData = studentData['photo']?.toString() ?? '';
     String imageUrl = '';
     final urlRegex = RegExp(r'https?:\/\/[^\s]+');
     final match = urlRegex.firstMatch(rawPhotoData);
     if (match != null) imageUrl = match.group(0) ?? '';
- 
+
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -149,7 +149,7 @@ class _UserScreenState extends State<UserScreen> {
       if (mounted) _scannerController.start();
     });
   }
- 
+
   void _handleQrScan(BarcodeCapture capture) async {
     _scannerController.stop();
     final List<Barcode> barcodes = capture.barcodes;
@@ -168,28 +168,28 @@ class _UserScreenState extends State<UserScreen> {
       }
     }
   }
- 
+
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
       builder: (BuildContext context) => AlertDialog(title: const Text('Error'), content: Text(message)),
     );
-    Future.delayed(const Duration(seconds: 5), () {
+    Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
         Navigator.of(context).pop();
         _scannerController.start();
       }
     });
   }
- 
+
   void _logout() async {
     await FirebaseAuth.instance.signOut();
   }
- 
+
   // ------------------------------------------------
   // Login de Reportes
   // ------------------------------------------------
- 
+
   /// Muestra el diálogo de login para acceder a Reportes.
   /// Verifica credenciales en Firebase Auth y luego carga los permisos de Firestore.
   Future<void> _showReportesLogin() async {
@@ -197,7 +197,7 @@ class _UserScreenState extends State<UserScreen> {
     final passCtrl = TextEditingController();
     bool isLoading = false;
     String errorMsg = '';
- 
+
     await showDialog(
       context: context,
       barrierDismissible: true,
@@ -299,27 +299,27 @@ class _UserScreenState extends State<UserScreen> {
                             isLoading = true;
                             errorMsg = '';
                           });
- 
+
                           try {
                             // Guardar usuario actual (maestro escaneando)
                             final usuarioActual = FirebaseAuth.instance.currentUser;
                             final emailActual = usuarioActual?.email;
                             final passActual = passCtrl.text.trim(); // No tenemos la pass del maestro actual
- 
+
                             // Intentar login con las credenciales ingresadas
                             UserCredential cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
                               email: emailCtrl.text.trim(),
                               password: passCtrl.text.trim(),
                             );
- 
+
                             final uid = cred.user!.uid;
- 
+
                             // Buscar permisos en Firestore
                             final permisosDoc = await FirebaseFirestore.instance
                                 .collection('usuarios_permisos')
                                 .doc(uid)
                                 .get();
- 
+
                             if (!permisosDoc.exists) {
                               // No tiene permisos asignados
                               setDialogState(() {
@@ -335,9 +335,9 @@ class _UserScreenState extends State<UserScreen> {
                               }
                               return;
                             }
- 
+
                             final permisos = permisosDoc.data() as Map<String, dynamic>;
- 
+
                             // Cerrar diálogo y abrir reportes con permisos
                             if (mounted) {
                               Navigator.of(context).pop();
@@ -370,7 +370,7 @@ class _UserScreenState extends State<UserScreen> {
       },
     );
   }
- 
+
   /// Abre la pantalla de reportes pasando los permisos del usuario.
   void _abrirReportesConPermisos(Map<String, dynamic> permisos) {
     _scannerController.stop();
@@ -383,18 +383,18 @@ class _UserScreenState extends State<UserScreen> {
       if (mounted) _scannerController.start();
     });
   }
- 
+
   @override
   void dispose() {
     _timer.cancel();
     _scannerController.dispose();
     super.dispose();
   }
- 
+
   @override
   Widget build(BuildContext context) {
     final List<String> weekdays = ['LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO', 'DOMINGO'];
- 
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
@@ -427,7 +427,7 @@ class _UserScreenState extends State<UserScreen> {
             child: GestureDetector(
               onTap: _switchCamera,
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 800),
+                duration: const Duration(milliseconds: 300),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
                   color: _currentCamera == CameraFacing.front
@@ -625,7 +625,7 @@ class _UserScreenState extends State<UserScreen> {
     );
   }
 }
- 
+
 // ------------------------------------------------
 // Widget separado para el diálogo de asistencia
 // con su propio Timer — evita que se reinicie
@@ -635,28 +635,28 @@ class _StudentDialog extends StatefulWidget {
   final String imageUrl;
   final int segundosTotales;
   final VoidCallback onCerrar;
- 
+
   const _StudentDialog({
     required this.studentData,
     required this.imageUrl,
     required this.segundosTotales,
     required this.onCerrar,
   });
- 
+
   @override
   State<_StudentDialog> createState() => _StudentDialogState();
 }
- 
+
 class _StudentDialogState extends State<_StudentDialog> {
   late int _segundosRestantes;
   Timer? _timer;
- 
+
   @override
   void initState() {
     super.initState();
     _segundosRestantes = widget.segundosTotales;
     // Timer que corre UNA sola vez y no se reinicia
-    _timer = Timer.periodic(const Duration(seconds: 5), (t) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) { t.cancel(); return; }
       setState(() => _segundosRestantes--);
       if (_segundosRestantes <= 0) {
@@ -665,13 +665,13 @@ class _StudentDialogState extends State<_StudentDialog> {
       }
     });
   }
- 
+
   @override
   void dispose() {
     _timer?.cancel();
     super.dispose();
   }
- 
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -768,7 +768,7 @@ class _StudentDialogState extends State<_StudentDialog> {
       ],
     );
   }
- 
+
   Widget _infoRow(String label, dynamic valor) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
