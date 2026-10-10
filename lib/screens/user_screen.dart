@@ -656,7 +656,7 @@ class _StudentDialogState extends State<_StudentDialog> {
     super.initState();
     _segundosRestantes = widget.segundosTotales;
     // Timer que corre UNA sola vez y no se reinicia
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+    _timer = Timer.periodic(const Duration(seconds: 5), (t) {
       if (!mounted) { t.cancel(); return; }
       setState(() => _segundosRestantes--);
       if (_segundosRestantes <= 0) {
