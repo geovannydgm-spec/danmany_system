@@ -427,7 +427,7 @@ class _UserScreenState extends State<UserScreen> {
             child: GestureDetector(
               onTap: _switchCamera,
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
+                duration: const Duration(milliseconds: 800),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
                   color: _currentCamera == CameraFacing.front
