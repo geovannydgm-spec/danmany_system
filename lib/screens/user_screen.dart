@@ -41,7 +41,7 @@ class _UserScreenState extends State<UserScreen> {
     initializeDateFormatting('es', null).then((_) {
       Intl.defaultLocale = 'es';
       _updateTime();
-      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
         _updateTime();
       });
     });
@@ -174,7 +174,7 @@ class _UserScreenState extends State<UserScreen> {
       context: context,
       builder: (BuildContext context) => AlertDialog(title: const Text('Error'), content: Text(message)),
     );
-    Future.delayed(const Duration(seconds: 1), () {
+    Future.delayed(const Duration(seconds: 5), () {
       if (mounted) {
         Navigator.of(context).pop();
         _scannerController.start();
