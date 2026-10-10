@@ -771,17 +771,6 @@ class _StudentDialogState extends State<_StudentDialog> {
           ],
         ),
       ),
-      actions: [
-        TextButton.icon(
-          onPressed: () {
-            _timer?.cancel();
-            widget.onCerrar();
-          },
-          icon: const Icon(Icons.qr_code_scanner, size: 18),
-          label: const Text('Siguiente'),
-          style: TextButton.styleFrom(foregroundColor: Colors.deepPurple),
-        ),
-      ],
     );
   }
 
